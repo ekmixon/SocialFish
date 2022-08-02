@@ -2,13 +2,13 @@ import requests
 
 # trace GEO IP -------------------------------------------------------------------------------------------------
 
-def tracegeoIp(ip):    
+def tracegeoIp(ip):
     try:
-        if '127.0.0.1' == ip:
+        if ip == '127.0.0.1':
             ip = 'https://geoip-db.com/json/'
         else:
-            ip = 'https://geoip-db.com/jsonp/' + ip
-        result = requests.get(ip).json()        
+            ip = f'https://geoip-db.com/jsonp/{ip}'
+        result = requests.get(ip).json()
     except Exception as e:
         print(e)
         result = "Error. Verify your network connection."

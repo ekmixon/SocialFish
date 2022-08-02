@@ -14,7 +14,7 @@ def nScan(ip):
             for port in lport:
                 ports.append(port)
                 states.append(nm[host][proto][port]['state'])
-        
+
         po = []
         for p in ports:
             n = {

